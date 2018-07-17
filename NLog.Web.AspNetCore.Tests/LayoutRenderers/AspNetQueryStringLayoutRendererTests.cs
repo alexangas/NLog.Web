@@ -13,6 +13,7 @@ using Microsoft.Extensions.Primitives;
 using HttpContextBase = Microsoft.AspNetCore.Http.HttpContext;
 using HttpSessionState = Microsoft.AspNetCore.Http.ISession;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Http.Internal;
 #endif
 using NLog.Web.LayoutRenderers;
@@ -28,7 +29,7 @@ namespace NLog.Web.Tests.LayoutRenderers
         [Fact]
         public void NullKeyRendersEmptyString()
         {
-            var renderer = CreateAndMockRenderer();
+            var renderer = CreateRenderer();
             renderer.QueryStringKeys = null;
 
             string result = renderer.Render(new LogEventInfo());
@@ -39,7 +40,7 @@ namespace NLog.Web.Tests.LayoutRenderers
         [Fact]
         public void KeyNotFoundRendersEmptyString_Flat_Formatting()
         {
-            var renderer = CreateAndMockRenderer(CreateTuple("Id", "1"));
+            var renderer = CreateRenderer(CreateTuple("Id", "1"));
 
             renderer.QueryStringKeys = new List<string> { "key" };
             renderer.OutputFormat = AspNetRequestLayoutOutputFormat.Flat;
@@ -52,7 +53,7 @@ namespace NLog.Web.Tests.LayoutRenderers
         [Fact]
         public void KeyNotFoundRendersEmptyString_Json_Formatting()
         {
-            var renderer = CreateAndMockRenderer(CreateTuple("Id", "1"));
+            var renderer = CreateRenderer(CreateTuple("Id", "1"));
 
             renderer.QueryStringKeys = new List<string> { "key" };
             renderer.OutputFormat = AspNetRequestLayoutOutputFormat.Json;
@@ -62,15 +63,27 @@ namespace NLog.Web.Tests.LayoutRenderers
             Assert.Empty(result);
         }
 
-
-
-
         [Fact]
         public void KeyFoundRendersValue_QueryString_Single_Item_Flat_Formatting()
         {
             var expectedResult = "Id=1";
 
-            var renderer = CreateAndMockRenderer(CreateTuple("Id", "1"));
+            var renderer = CreateRenderer(CreateTuple("Id", "1"));
+
+            renderer.QueryStringKeys = new List<string> { "Id" };
+            renderer.OutputFormat = AspNetRequestLayoutOutputFormat.Flat;
+
+            string result = renderer.Render(new LogEventInfo());
+
+            Assert.Equal(expectedResult, result);
+        }
+
+        [Fact]
+        public void KeyFoundRendersValue_QueryString_Single_Item_Flat_Formatting_ValuesOnly()
+        {
+            var expectedResult = "1";
+
+            var renderer = CreateRenderer(CreateTuple("Id", "1"));
 
             renderer.QueryStringKeys = new List<string> { "Id" };
             renderer.OutputFormat = AspNetRequestLayoutOutputFormat.Flat;
@@ -85,10 +98,26 @@ namespace NLog.Web.Tests.LayoutRenderers
         {
             var expectedResult = "[{\"Id\":\"1\"}]";
 
-            var renderer = CreateAndMockRenderer(CreateTuple("Id", "1"));
+            var renderer = CreateRenderer(CreateTuple("Id", "1"));
 
             renderer.QueryStringKeys = new List<string> { "Id" };
             renderer.OutputFormat = AspNetRequestLayoutOutputFormat.Json;
+
+            string result = renderer.Render(new LogEventInfo());
+
+            Assert.Equal(expectedResult, result);
+        }
+
+        [Fact]
+        public void KeyFoundRendersValue_QueryString_Single_Item_Json_Formatting_ValuesOnly()
+        {
+            var expectedResult = "[\"1\"]";
+
+            var renderer = CreateRenderer(CreateTuple("Id", "1"));
+
+            renderer.QueryStringKeys = new List<string> { "Id" };
+            renderer.OutputFormat = AspNetRequestLayoutOutputFormat.Json;
+            renderer.ValuesOnly = true;
 
             string result = renderer.Render(new LogEventInfo());
 
@@ -100,7 +129,7 @@ namespace NLog.Web.Tests.LayoutRenderers
         {
             var expectedResult = "Id=1,Id2=2";
 
-            var renderer = CreateAndMockRenderer(CreateTuple("Id", "1"), CreateTuple("Id2", "2"));
+            var renderer = CreateRenderer(CreateTuple("Id", "1"), CreateTuple("Id2", "2"));
 
             renderer.QueryStringKeys = new List<string> { "Id", "Id2" };
             renderer.OutputFormat = AspNetRequestLayoutOutputFormat.Flat;
@@ -111,11 +140,27 @@ namespace NLog.Web.Tests.LayoutRenderers
         }
 
         [Fact]
-        public void EmptyProperyShouldListAll()
+        public void KeyFoundRendersValue_QueryString_Multiple_Item_Flat_Formatting_ValuesOnly()
+        {
+            var expectedResult = "1,2";
+
+            var renderer = CreateRenderer(CreateTuple("Id", "1"), CreateTuple("Id2", "2"));
+
+            renderer.QueryStringKeys = new List<string> { "Id", "Id2" };
+            renderer.OutputFormat = AspNetRequestLayoutOutputFormat.Flat;
+            renderer.ValuesOnly = true;
+
+            string result = renderer.Render(new LogEventInfo());
+
+            Assert.Equal(expectedResult, result);
+        }
+
+        [Fact]
+        public void EmptyPropertyShouldListAll()
         {
             var expectedResult = "Id=1,Id2=2";
 
-            var renderer = CreateAndMockRenderer(CreateTuple("Id", "1"), CreateTuple("Id2", "2"));
+            var renderer = CreateRenderer(CreateTuple("Id", "1"), CreateTuple("Id2", "2"));
 
             renderer.QueryStringKeys = new List<string> { };
             renderer.OutputFormat = AspNetRequestLayoutOutputFormat.Flat;
@@ -126,11 +171,11 @@ namespace NLog.Web.Tests.LayoutRenderers
         }
 
         [Fact]
-        public void NullProperyShouldListAll()
+        public void NullPropertyShouldListAll()
         {
             var expectedResult = "Id=1,Id2=2";
 
-            var renderer = CreateAndMockRenderer(CreateTuple("Id", "1"), CreateTuple("Id2", "2"));
+            var renderer = CreateRenderer(CreateTuple("Id", "1"), CreateTuple("Id2", "2"));
 
             renderer.QueryStringKeys = null;
             renderer.OutputFormat = AspNetRequestLayoutOutputFormat.Flat;
@@ -139,15 +184,31 @@ namespace NLog.Web.Tests.LayoutRenderers
 
             Assert.Equal(expectedResult, result);
         }
+
         [Fact]
         public void MultipleValuesForOneKeyShouldWork()
         {
             var expectedResult = "Id=1,2,3";
 
-            var renderer = CreateAndMockRenderer(CreateTuple("Id", "1", "2", "3"));
+            var renderer = CreateRenderer(CreateTuple("Id", "1", "2", "3"));
 
             renderer.QueryStringKeys = null;
             renderer.OutputFormat = AspNetRequestLayoutOutputFormat.Flat;
+
+            string result = renderer.Render(new LogEventInfo());
+
+            Assert.Equal(expectedResult, result);
+        }
+
+        [Fact] public void MultipleValuesForOneKeyShouldWork_ValuesOnly()
+        {
+            var expectedResult = "1,2,3";
+
+            var renderer = CreateRenderer(CreateTuple("Id", "1", "2", "3"));
+
+            renderer.QueryStringKeys = null;
+            renderer.OutputFormat = AspNetRequestLayoutOutputFormat.Flat;
+            renderer.ValuesOnly = true;
 
             string result = renderer.Render(new LogEventInfo());
 
@@ -157,10 +218,9 @@ namespace NLog.Web.Tests.LayoutRenderers
         [Fact]
         public void MultipleValuesJsonQuoted()
         {
-            
             var expectedResult = @"{""Id"":""a'b,\""c\""""}";
 
-            var renderer = CreateAndMockRenderer(CreateTuple("Id", "a'b", "\"c\""));
+            var renderer = CreateRenderer(CreateTuple("Id", "a'b", "\"c\""));
 
             renderer.QueryStringKeys = null;
             renderer.OutputFormat = AspNetRequestLayoutOutputFormat.Json;
@@ -176,7 +236,7 @@ namespace NLog.Web.Tests.LayoutRenderers
         {
             var expectedResult = "[{\"Id\":\"1\"},{\"Id2\":\"2\"}]";
 
-            var renderer = CreateAndMockRenderer(CreateTuple("Id", "1"), CreateTuple("Id2", "2"));
+            var renderer = CreateRenderer(CreateTuple("Id", "1"), CreateTuple("Id2", "2"));
 
             renderer.QueryStringKeys = new List<string> { "Id", "Id2" };
             renderer.OutputFormat = AspNetRequestLayoutOutputFormat.Json;
@@ -186,6 +246,21 @@ namespace NLog.Web.Tests.LayoutRenderers
             Assert.Equal(expectedResult, result);
         }
 
+        [Fact]
+        public void KeyFoundRendersValue_QueryString_Multiple_Item_Json_Formatting_ValuesOnly()
+        {
+            var expectedResult = "[\"1\",\"2\"]";
+
+            var renderer = CreateRenderer(CreateTuple("Id", "1"), CreateTuple("Id2", "2"));
+
+            renderer.QueryStringKeys = new List<string> { "Id", "Id2" };
+            renderer.OutputFormat = AspNetRequestLayoutOutputFormat.Json;
+            renderer.ValuesOnly = true;
+
+            string result = renderer.Render(new LogEventInfo());
+
+            Assert.Equal(expectedResult, result);
+        }
     
         /// <summary>
         /// Create tuple with 1 or more values (with 1 key)
@@ -198,48 +273,33 @@ namespace NLog.Web.Tests.LayoutRenderers
             return new Tuple<string, string[]>(key, values);
         }
 
-
-        private static AspNetQueryStringLayoutRenderer CreateAndMockRenderer(params Tuple<string, string[]>[] values)
+        private AspNetQueryStringLayoutRenderer CreateRenderer(params Tuple<string, string[]>[] pairs)
         {
-            var renderer = new AspNetQueryStringLayoutRenderer();
-
 #if !ASP_NET_CORE
-
             var httpContext = Substitute.For<HttpContextBase>();
-            var namedClollection = new NameValueCollection();
-            foreach (var tuple in values)
+            var pairCollection = new NameValueCollection();
+#else
+            var httpContext = this.HttpContext;
+            var pairCollection = new QueryBuilder();
+#endif
+
+            foreach (var tuple in pairs)
             {
                 foreach (var value in tuple.Item2)
                 {
-                    namedClollection.Add(tuple.Item1, value);
+                    pairCollection.Add(tuple.Item1, value);
                 }
-
             }
 
-            httpContext.Request.QueryString.Returns(namedClollection);
-
-            renderer.HttpContextAccessor = new FakeHttpContextAccessor(httpContext);
+#if !ASP_NET_CORE
+            httpContext.Request.QueryString.Returns(pairCollection);
 #else
-            var httpContext = Substitute.For<HttpContextBase>();
-            var dict = new Dictionary<string, StringValues>();
-            foreach (var tuple in values)
-            {
-                dict.Add(tuple.Item1, new StringValues(tuple.Item2));
-
-            }
-            IQueryCollection querystringValues = new QueryCollection(dict);
-
-            httpContext.Request.Query.Returns(querystringValues);
-
-            renderer.HttpContextAccessor = new FakeHttpContextAccessor(httpContext);
+            httpContext.Request.QueryString = pairCollection.ToQueryString();
 #endif
 
+            var renderer = new AspNetQueryStringLayoutRenderer();
+            renderer.HttpContextAccessor = new FakeHttpContextAccessor(httpContext);
             return renderer;
-
-
-
         }
-
-
     }
 }
