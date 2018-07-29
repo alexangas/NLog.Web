@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using NLog.Layouts;
-using NLog.Web.Tests.LayoutRenderers;
 using Xunit;
 
-namespace NLog.Web.AspNetCore.Tests.LayoutRenderers
+namespace NLog.Web.Tests.LayoutRenderers
 {
     public class AssemblyVersionLayoutRendererTests : TestBase
     {
