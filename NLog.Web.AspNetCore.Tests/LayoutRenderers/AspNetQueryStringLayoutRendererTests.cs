@@ -87,6 +87,7 @@ namespace NLog.Web.Tests.LayoutRenderers
 
             renderer.QueryStringKeys = new List<string> { "Id" };
             renderer.OutputFormat = AspNetRequestLayoutOutputFormat.Flat;
+            renderer.ValuesOnly = true;
 
             string result = renderer.Render(new LogEventInfo());
 
