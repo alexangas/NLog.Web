@@ -12,7 +12,11 @@ namespace NLog.Web.Tests.LayoutRenderers
         [Fact]
         public void AssemblyNameVersionTest()
         {
+#if ASP_NET_CORE
             Layout l = "${assembly-version:NLog.Web.AspNetCore.Tests}";
+#else
+            Layout l = "${assembly-version:NLog.Web.Tests}";
+#endif
             var result = l.Render(LogEventInfo.CreateNullEvent());
             Assert.Equal("1.2.3.0", result);
         }
